@@ -1,7 +1,7 @@
 {
   "name": "yego-monitoreo-live",
   "version": "1.0.0",
-  "description": "",
+  "description": "Plataforma de Monitoreo YEGO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,5 +10,8 @@
     "express": "^4.18.2",
     "sqlite3": "^5.1.6",
     "sqlite": "^5.0.1"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
