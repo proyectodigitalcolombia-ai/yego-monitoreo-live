@@ -2,13 +2,13 @@ const axios = require('axios');
 
 async function enviarAMonitor(carga) {
     try {
-        // Aquí pondrás la URL que te dé el hosting cuando subas el repositorio del ROBOT
+        // Esta URL cambiará cuando despliegues el segundo repositorio
         const MONITOR_URL = process.env.MONITOR_SERVICE_URL || 'http://localhost:4000/api/robot';
 
         const payload = {
-            id_registro: carga.id,
+            id: carga.id,
             placa: carga.placa,
-            contenedor: carga.cont,
+            cont: carga.cont,
             config_gps: {
                 url: carga.url_plataforma,
                 usuario: carga.usuario_gps,
@@ -16,11 +16,10 @@ async function enviarAMonitor(carga) {
             }
         };
 
-        console.log(`[LOGÍSTICA] 📡 Enviando señal al robot para placa: ${carga.placa}`);
+        console.log(`[LOGÍSTICA] 📡 Avisando al robot sobre placa: ${carga.placa}`);
         await axios.post(MONITOR_URL, payload);
-        
     } catch (error) {
-        console.error("[ERROR] El servidor del robot no respondió:", error.message);
+        console.error("[LOGÍSTICA] ❌ El robot no recibió la señal:", error.message);
     }
 }
 
