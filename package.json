@@ -1,7 +1,12 @@
 {
   "name": "yego-monitoreo-live",
   "version": "1.0.0",
-  "engines": { "node": "20.x" },
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "express": "^4.18.2",
