@@ -1,25 +1,35 @@
 const axios = require('axios');
 
-async function enviarAMonitor(carga) {
-    try {
-        // Esta URL cambiará cuando despliegues el segundo repositorio
-        const MONITOR_URL = process.env.MONITOR_SERVICE_URL || 'http://localhost:4000/api/robot';
+/**
+ * Envía los datos del contenedor y el GPS al Robot Worker
+ */
+async function enviarAMonitor(datos) {
+    // La URL debe ser la dirección de tu Robot en Render
+    const ROBOT_URL = process.env.MONITOR_SERVICE_URL || 'https://yego-robot-worker.onrender.com/api/robot';
 
+    try {
+        console.log(`[SISTEMA] Solicitando monitoreo para placa: ${datos.placa}`);
+        
         const payload = {
-            id: carga.id,
-            placa: carga.placa,
-            cont: carga.cont,
+            placa: datos.placa,
+            cont: datos.cont,
             config_gps: {
-                url: carga.url_plataforma,
-                usuario: carga.usuario_gps,
-                clave: carga.clave_gps
+                url: datos.url_gps,
+                usuario: datos.user_gps,
+                clave: datos.pass_gps
             }
         };
 
-        console.log(`[LOGÍSTICA] 📡 Avisando al robot sobre placa: ${carga.placa}`);
-        await axios.post(MONITOR_URL, payload);
+        const respuesta = await axios.post(ROBOT_URL, payload, {
+            timeout: 10000 // Si el robot no responde en 10 seg, da error
+        });
+
+        console.log(`[OK] El Robot confirmó la recepción: ${respuesta.data.mensaje}`);
+        return true;
+
     } catch (error) {
-        console.error("[LOGÍSTICA] ❌ El robot no recibió la señal:", error.message);
+        console.error(`[ERROR] No se pudo conectar con el Robot:`, error.message);
+        return false;
     }
 }
 
