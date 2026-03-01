@@ -9,78 +9,76 @@ app.use(express.json());
 let db;
 setupDb().then(database => { db = database; });
 
-// VISTA PRINCIPAL: MAPA Y LISTA DE ACTIVOS
+// --- VISTA PRINCIPAL ---
 app.get('/', async (req, res) => {
-    if (!db) return res.send('Cargando base de datos...');
+    if (!db) return res.send('Iniciando base de datos...');
     const rutas = await db.all('SELECT * FROM rutas WHERE estado = "EN RUTA"');
-
+    
     res.send(`
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <body class="bg-slate-900 font-sans h-screen flex flex-col overflow-hidden">
-        <div class="bg-purple-900 p-4 text-white flex justify-between items-center shadow-xl">
-            <h1 class="font-black italic uppercase tracking-tighter">YEGO <span class="text-emerald-400">Live Tracking</span></h1>
-            <span class="text-[10px] font-bold bg-white/10 px-3 py-1 rounded-full uppercase">Servicio de Monitoreo Activo</span>
+    <body class="bg-slate-900 h-screen flex flex-col overflow-hidden font-sans">
+        <header class="bg-purple-900 p-4 text-white flex justify-between items-center shadow-2xl">
+            <h1 class="font-black italic uppercase tracking-tighter text-xl">YEGO <span class="text-emerald-400">Live</span></h1>
+            <div class="text-[10px] text-right font-bold uppercase opacity-70">Control Satelital</div>
+        </header>
+        <div class="flex-1 flex overflow-hidden">
+            <aside class="w-72 bg-white border-r border-slate-200 overflow-y-auto p-4">
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Vehículos</p>
+                ${rutas.map(r => `
+                    <div onclick="location.href='/detalle/${r.id}'" class="p-3 mb-2 bg-slate-50 border border-slate-100 rounded-xl hover:border-purple-600 cursor-pointer transition-all">
+                        <div class="bg-purple-950 text-white px-2 py-0.5 rounded text-[10px] font-black w-fit mb-1">${r.placa}</div>
+                        <p class="font-bold text-slate-700 text-[11px] uppercase">${r.nombre_conductor}</p>
+                    </div>
+                `).join('')}
+            </aside>
+            <main id="map" class="flex-1 bg-slate-100"></main>
         </div>
-
-        <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <div class="w-full md:w-80 bg-white overflow-y-auto p-4 border-r border-slate-200">
-                <h2 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Vehículos en Mapa</h2>
-                <div class="space-y-3">
-                    ${rutas.map(r => `
-                        <div class="p-4 border border-slate-100 rounded-2xl bg-slate-50 hover:border-purple-500 cursor-pointer transition-all shadow-sm" onclick="enfocarMapa(${r.latitud}, ${r.longitud}, '${r.placa}')">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="bg-purple-900 text-white px-3 py-1 rounded-lg font-black text-xs tracking-widest">${r.placa}</span>
-                                <span class="text-[9px] font-bold text-emerald-500 uppercase italic">Online</span>
-                            </div>
-                            <p class="text-[11px] font-bold text-slate-700 uppercase">${r.nombre_conductor}</p>
-                            <p class="text-[9px] text-slate-400 uppercase">H. Inicio: ${r.hora_inicio}</p>
-                            <a href="/detalle/${r.id}" class="mt-2 block text-center bg-white border border-purple-200 text-purple-700 py-1 rounded-lg font-black text-[9px] uppercase hover:bg-purple-700 hover:text-white transition-all italic">Ver Panel de Control 🔍</a>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div id="map" class="flex-1 bg-slate-100"></div>
-        </div>
-
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
             var map = L.map('map').setView([4.5708, -74.2973], 6);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-            function enfocarMapa(lat, lng, placa) {
-                map.setView([lat, lng], 13);
-                L.marker([lat, lng]).addTo(map).bindPopup("<b>Placa: " + placa + "</b>").openPopup();
-            }
         </script>
     </body>`);
 });
 
-// RUTA PARA EL PANEL DE CONTROL DETALLADO (LA TABLA AZUL)
+// --- VISTA DETALLE (TABLA AZUL) ---
 app.get('/detalle/:id', async (req, res) => {
     const r = await db.get('SELECT * FROM rutas WHERE id = ?', [req.params.id]);
     if (!r) return res.redirect('/');
-
-    res.send(\`
-        <script src="https://cdn.tailwindcss.com"></script>
-        <body class="bg-slate-100 p-8">
-            <div class="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-2xl">
-                <h1 class="text-2xl font-black text-purple-900 mb-6 uppercase italic">Detalle de Activos: \${r.placa}</h1>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-purple-500">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Conductor</p>
-                        <p class="font-black text-lg uppercase text-slate-800">\${r.nombre_conductor}</p>
-                    </div>
-                    <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Cédula / ID</p>
-                        <p class="font-black text-lg text-slate-800">\${r.cedula_conductor || 'N/A'}</p>
-                    </div>
-                </div>
-                <button onclick="window.history.back()" class="mt-8 bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Volver</button>
+    
+    res.send(`
+    <script src="https://cdn.tailwindcss.com"></script>
+    <body class="bg-slate-100 p-4 font-sans text-[10px]">
+        <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded border border-slate-300">
+            <div class="bg-blue-800 text-white p-2 px-3 flex justify-between font-bold uppercase italic text-[11px]">
+                <span>Seguimiento Controlador - YEGO Eco-T</span>
+                <button onclick="location.href='/'" class="bg-emerald-600 px-3 rounded text-[9px] py-0.5">Volver</button>
             </div>
-        </body>
-    \`);
+            <div class="grid grid-cols-6 border-b border-slate-300">
+                <div class="p-2 border-r border-b bg-blue-900 text-white font-bold uppercase">Placa</div>
+                <div class="p-2 border-b border-r font-black text-blue-800 text-xs">${r.placa}</div>
+                <div class="p-2 border-r border-b bg-blue-900 text-white font-bold uppercase">Marca</div>
+                <div class="p-2 border-b border-r uppercase">${r.marca || '-'}</div>
+                <div class="p-2 border-r border-b bg-blue-900 text-white font-bold uppercase">Modelo</div>
+                <div class="p-2 border-b font-bold">${r.modelo || '-'}</div>
+                <div class="p-2 border-r bg-blue-900 text-white font-bold uppercase">Conductor</div>
+                <div class="p-2 border-r font-bold uppercase">${r.nombre_conductor}</div>
+                <div class="p-2 border-r bg-blue-900 text-white font-bold uppercase">C.C.</div>
+                <div class="p-2 border-r">${r.cedula_conductor || '-'}</div>
+                <div class="p-2 border-r bg-blue-900 text-white font-bold uppercase">Celular</div>
+                <div class="p-2 font-black text-emerald-700">${r.celular_conductor || '-'}</div>
+            </div>
+            <div id="mapDetail" class="h-64 bg-slate-200 w-full border-b border-slate-300"></div>
+        </div>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script>
+            var mapDetail = L.map('mapDetail').setView([${r.latitud || 4.5}, ${r.longitud || -74}], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapDetail);
+            L.marker([${r.latitud || 4.5}, ${r.longitud || -74}]).addTo(mapDetail);
+        </script>
+    </body>`);
 });
 
-app.listen(PORT, () => console.log('Servicio de Monitoreo YEGO Online'));
+app.listen(PORT, () => console.log('Servicio YEGO Online'));
